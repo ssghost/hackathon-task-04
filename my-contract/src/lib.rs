@@ -92,6 +92,9 @@ fn view_owner<'b, S: HasStateApi>(
     _ctx: &impl HasReceiveContext,
     host: &'b impl HasHost<State, StateApiType = S>,
 ) -> ReceiveResult<&'b State> {
+    let owner: AccountAddress = _ctx.owner();
+    let sender: Address = _ctx.sender();
+    ensure!(sender.matches_account(&owner));
     Ok(host.state())
 }
 
@@ -99,14 +102,13 @@ fn view_owner<'b, S: HasStateApi>(
 fn view_free<'b, S: HasStateApi>(
     _ctx: &impl HasReceiveContext,
     host: &'b impl HasHost<State, StateApiType = S>,
-) -> ReceiveResult<&'b ViewFree> {
-    let viewfree: ViewFree = ViewFree { model: String::from(*host.state().model), 
-                                dataset: host.state().dataset, 
-                                amount: host.state().amount, 
-                                avg_acc: host.state().avg_acc, 
-                                ver_cnt: host.state().ver_cnt 
-                            };
-    Ok(&viewfree)
+) -> ReceiveResult<ViewFree> {
+    Ok(ViewFree { model: String::from(&*host.state().model), 
+        dataset: String::from(&*host.state().dataset), 
+        amount: host.state().amount, 
+        avg_acc: String::from(&*host.state().avg_acc), 
+        ver_cnt: host.state().ver_cnt 
+    })
 }
 
 #[receive(contract = "my_contract", name = "view_payer", return_value = "State", payable)]
@@ -115,6 +117,7 @@ fn view_payer<'b, S: HasStateApi>(
     host: &'b impl HasHost<State, StateApiType = S>,
     _amount: Amount
 ) -> ReceiveResult<&'b State> {
+
     Ok(host.state())
 }
 
