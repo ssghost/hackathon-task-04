@@ -3,15 +3,24 @@ use concordium_std::*;
 use core::fmt::Debug;
 use std::default::Default;
 use serde_json;
-use serde::{Serialize, Deserialize};
 
 #[derive(Serial, Deserial, SchemaType, Clone)]
 pub struct State {
     model: String,
     dataset: String,
+    amount: Amount,
     avg_acc: String,
-    ver_cnt: i32,
+    ver_cnt: u8,
     json_value: String
+}
+
+#[derive(Serial, Deserial, SchemaType, Clone)]
+pub struct ViewFree {
+    model: String,
+    dataset: String,
+    amount: Amount,
+    avg_acc: String,
+    ver_cnt: u8
 }
 
 #[derive(Debug, PartialEq, Eq, Default, Reject, Serial, Deserial, SchemaType)]
@@ -27,10 +36,11 @@ pub struct InitSchema {
     dataset: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, SchemaType, Clone)]
+#[derive(Serial, Deserial, SchemaType, Clone)]
 pub struct RecvSchema {
-    avg_acc: f32,
-    json_value: serde_json::Value
+    amount: Amount,
+    avg_acc: String,
+    json_value: String
 }
 
 #[init(contract = "my_contract", parameter = "InitSchema")]
@@ -41,6 +51,7 @@ fn init<S: HasStateApi>(
     let param: InitSchema = _ctx.parameter_cursor().get()?;
     let i_state:State = State {model: String::from(param.model), 
                      dataset: String::from(param.dataset),
+                     amount: Amount{micro_ccd:0},
                      avg_acc: (0.0).to_string(),
                      ver_cnt: 0,
                      json_value: serde_json::json!(null).to_string()};               
@@ -56,11 +67,18 @@ fn init<S: HasStateApi>(
 )]
 fn receive<S: HasStateApi>(
     ctx: &impl HasReceiveContext,
-    _host: &mut impl HasHost<State, StateApiType = S>
+    _host: &mut impl HasHost<State, StateApiType = S>,
 ) -> Result<(), Error> {
     let owner: AccountAddress = ctx.owner();
     let sender: Address = ctx.sender();
     ensure!(sender.matches_account(&owner));
+    let param: RecvSchema = ctx.parameter_cursor().get()?;
+    let state: &mut State = _host.state_mut();
+    ensure!((param.avg_acc.parse::<f32>()).unwrap() >= ((state.avg_acc).parse::<f32>()).unwrap());
+    state.amount = param.amount;
+    state.avg_acc = String::from(param.avg_acc);
+    state.ver_cnt += 1;
+    state.json_value = param.json_value;
     let throw_error: bool = ctx.parameter_cursor().get()?; 
     if throw_error {
         Err(Error::ParseParamsError)
@@ -69,10 +87,33 @@ fn receive<S: HasStateApi>(
     }
 }
 
-#[receive(contract = "my_contract", name = "view", return_value = "State")]
-fn view<'b, S: HasStateApi>(
+#[receive(contract = "my_contract", name = "view_owner", return_value = "State")]
+fn view_owner<'b, S: HasStateApi>(
     _ctx: &impl HasReceiveContext,
     host: &'b impl HasHost<State, StateApiType = S>,
+) -> ReceiveResult<&'b State> {
+    Ok(host.state())
+}
+
+#[receive(contract = "my_contract", name = "view_free", return_value = "ViewFree")]
+fn view_free<'b, S: HasStateApi>(
+    _ctx: &impl HasReceiveContext,
+    host: &'b impl HasHost<State, StateApiType = S>,
+) -> ReceiveResult<&'b ViewFree> {
+    let viewfree: ViewFree = ViewFree { model: String::from(*host.state().model), 
+                                dataset: host.state().dataset, 
+                                amount: host.state().amount, 
+                                avg_acc: host.state().avg_acc, 
+                                ver_cnt: host.state().ver_cnt 
+                            };
+    Ok(&viewfree)
+}
+
+#[receive(contract = "my_contract", name = "view_payer", return_value = "State", payable)]
+fn view_payer<'b, S: HasStateApi>(
+    _ctx: &impl HasReceiveContext,
+    host: &'b impl HasHost<State, StateApiType = S>,
+    _amount: Amount
 ) -> ReceiveResult<&'b State> {
     Ok(host.state())
 }
