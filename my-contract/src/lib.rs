@@ -1,59 +1,73 @@
 //! # A Concordium V1 smart contract
 use concordium_std::*;
 use core::fmt::Debug;
+use serde_json;
+use serde::{Serialize, Deserialize};
 
-/// Your smart contract state.
-#[derive(Serialize, SchemaType, Clone)]
+#[derive(Serial, Deserial, SchemaType, Clone)]
 pub struct State {
-    // Your state
+    model: String,
+    dataset: String,
+    avg_acc: String,
+    ver_cnt: i32,
+    json_value: String
 }
 
-/// Your smart contract errors.
-#[derive(Debug, PartialEq, Eq, Reject, Serial, SchemaType)]
+#[derive(Debug, PartialEq, Eq, Reject, Serial, Deserial, SchemaType)]
 enum Error {
-    /// Failed parsing the parameter.
-    #[from(ParseError)]
+    #[from(concordium_std::ParseError)]
     ParseParamsError,
-    /// Your error
-    YourError,
 }
 
-/// Init function that creates a new smart contract.
-#[init(contract = "my_contract")]
+#[derive(Serial, Deserial, SchemaType, Clone)]
+pub struct InitSchema {
+    model: String,
+    dataset: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, SchemaType, Clone)]
+pub struct RecvSchema {
+    avg_acc: f32,
+    json_value: serde_json::Value
+}
+
+#[init(contract = "my_contract", parameter = "InitSchema")]
 fn init<S: HasStateApi>(
     _ctx: &impl HasInitContext,
     _state_builder: &mut StateBuilder<S>,
 ) -> InitResult<State> {
-    // Your code
-
-    Ok(State {})
+    let param: InitSchema = _ctx.parameter_cursor().get()?;
+    let i_state = State {model: String::from(param.model), 
+                     dataset: String::from(param.dataset),
+                     avg_acc: (0.0).to_string(),
+                     ver_cnt: 0,
+                     json_value: serde_json::json!(null).to_string()};               
+    Ok(i_state)
 }
 
-/// Receive function. The input parameter is the boolean variable `throw_error`.
-///  If `throw_error == true`, the receive function will throw a custom error.
-///  If `throw_error == false`, the receive function executes successfully.
 #[receive(
     contract = "my_contract",
     name = "receive",
-    parameter = "bool",
+    parameter = "RecvSchema",
     error = "Error",
-    mutable
+    mutable,
+    payable
 )]
 fn receive<S: HasStateApi>(
     ctx: &impl HasReceiveContext,
     _host: &mut impl HasHost<State, StateApiType = S>,
+    _amount: Amount
 ) -> Result<(), Error> {
-    // Your code
+    
 
     let throw_error = ctx.parameter_cursor().get()?; // Returns Error::ParseError on failure
     if throw_error {
-        Err(Error::YourError)
+        Err(Error::ParseParamsError)
     } else {
         Ok(())
     }
 }
 
-/// View function that returns the content of the state.
 #[receive(contract = "my_contract", name = "view", return_value = "State")]
 fn view<'b, S: HasStateApi>(
     _ctx: &impl HasReceiveContext,
@@ -70,7 +84,6 @@ mod tests {
     type ContractResult<A> = Result<A, Error>;
 
     #[concordium_test]
-    /// Test that initializing the contract succeeds with some state.
     fn test_init() {
         let ctx = TestInitContext::empty();
 
@@ -81,14 +94,11 @@ mod tests {
     }
 
     #[concordium_test]
-    /// Test that invoking the `receive` endpoint with the `false` parameter
-    /// succeeds in updating the contract.
     fn test_throw_no_error() {
         let ctx = TestInitContext::empty();
 
         let mut state_builder = TestStateBuilder::new();
 
-        // Initializing state
         let initial_state = init(&ctx, &mut state_builder).expect("Initialization should pass");
 
         let mut ctx = TestReceiveContext::empty();
@@ -99,22 +109,17 @@ mod tests {
 
         let mut host = TestHost::new(initial_state, state_builder);
 
-        // Call the contract function.
         let result: ContractResult<()> = receive(&ctx, &mut host);
 
-        // Check the result.
         claim!(result.is_ok(), "Results in rejection");
     }
 
     #[concordium_test]
-    /// Test that invoking the `receive` endpoint with the `true` parameter
-    /// results in the `YourError` being thrown.
     fn test_throw_error() {
         let ctx = TestInitContext::empty();
 
         let mut state_builder = TestStateBuilder::new();
 
-        // Initializing state
         let initial_state = init(&ctx, &mut state_builder).expect("Initialization should pass");
 
         let mut ctx = TestReceiveContext::empty();
@@ -125,10 +130,8 @@ mod tests {
 
         let mut host = TestHost::new(initial_state, state_builder);
 
-        // Call the contract function.
         let error: ContractResult<()> = receive(&ctx, &mut host);
 
-        // Check the result.
-        claim_eq!(error, Err(Error::YourError), "Function should throw an error.");
+        claim_eq!(error, Err(Error::ParseParamsError), "Function should throw an error.");
     }
 }
