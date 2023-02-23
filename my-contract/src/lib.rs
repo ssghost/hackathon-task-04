@@ -1,6 +1,7 @@
 //! # A Concordium V1 smart contract
 use concordium_std::*;
 use core::fmt::Debug;
+use std::default::Default;
 use serde_json;
 use serde::{Serialize, Deserialize};
 
@@ -13,10 +14,11 @@ pub struct State {
     json_value: String
 }
 
-#[derive(Debug, PartialEq, Eq, Reject, Serial, Deserial, SchemaType)]
+#[derive(Debug, PartialEq, Eq, Default, Reject, Serial, Deserial, SchemaType)]
 enum Error {
     #[from(concordium_std::ParseError)]
     ParseParamsError,
+    #[default] Default
 }
 
 #[derive(Serial, Deserial, SchemaType, Clone)]
@@ -37,7 +39,7 @@ fn init<S: HasStateApi>(
     _state_builder: &mut StateBuilder<S>,
 ) -> InitResult<State> {
     let param: InitSchema = _ctx.parameter_cursor().get()?;
-    let i_state = State {model: String::from(param.model), 
+    let i_state:State = State {model: String::from(param.model), 
                      dataset: String::from(param.dataset),
                      avg_acc: (0.0).to_string(),
                      ver_cnt: 0,
@@ -50,17 +52,16 @@ fn init<S: HasStateApi>(
     name = "receive",
     parameter = "RecvSchema",
     error = "Error",
-    mutable,
-    payable
+    mutable
 )]
 fn receive<S: HasStateApi>(
     ctx: &impl HasReceiveContext,
-    _host: &mut impl HasHost<State, StateApiType = S>,
-    _amount: Amount
+    _host: &mut impl HasHost<State, StateApiType = S>
 ) -> Result<(), Error> {
-    
-
-    let throw_error = ctx.parameter_cursor().get()?; // Returns Error::ParseError on failure
+    let owner: AccountAddress = ctx.owner();
+    let sender: Address = ctx.sender();
+    ensure!(sender.matches_account(&owner));
+    let throw_error: bool = ctx.parameter_cursor().get()?; 
     if throw_error {
         Err(Error::ParseParamsError)
     } else {
