@@ -52,7 +52,7 @@ fn init<S: HasStateApi>(
     let i_state:State = State {model: String::from(param.model), 
                      dataset: String::from(param.dataset),
                      amount: Amount{micro_ccd:0},
-                     avg_acc: (0.0).to_string(),
+                     avg_acc: "0000".to_string(),
                      ver_cnt: 0,
                      json_value: serde_json::json!(null).to_string()};               
     Ok(i_state)
@@ -74,7 +74,7 @@ fn receive<S: HasStateApi>(
     ensure!(sender.matches_account(&owner));
     let param: RecvSchema = ctx.parameter_cursor().get()?;
     let state: &mut State = _host.state_mut();
-    ensure!((param.avg_acc.parse::<f32>()).unwrap() >= ((state.avg_acc).parse::<f32>()).unwrap());
+    ensure!((param.avg_acc.parse::<i32>()).unwrap() >= ((state.avg_acc).parse::<i32>()).unwrap());
     state.amount = param.amount;
     state.avg_acc = String::from(param.avg_acc);
     state.ver_cnt += 1;
