@@ -117,7 +117,9 @@ fn view_payer<'b, S: HasStateApi>(
     host: &'b impl HasHost<State, StateApiType = S>,
     _amount: Amount
 ) -> ReceiveResult<&'b State> {
-
+    let owner: AccountAddress = _ctx.owner();
+    let sender: Address = _ctx.sender();
+    ensure!(!sender.matches_account(&owner)); 
     Ok(host.state())
 }
 
