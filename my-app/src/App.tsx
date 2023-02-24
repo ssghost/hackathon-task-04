@@ -11,7 +11,7 @@ import {
 } from '@concordium/react-components';
 import { ContractManager, Info, refresh } from './Contract';
 import { BROWSER_WALLET, DEFAULT_CONTRACT_INDEX, TESTNET, WALLET_CONNECT } from './config';
-import MyStorage from './Storage';
+import MyStorage from './inputStorage';
 import { resultFromTruthy } from './Contract';
 import { useStorage } from './useStorage';
 import { refreshState, StorageState } from './state';

@@ -1,27 +1,29 @@
+import { CcdAmount } from '@concordium/web-sdk';
 import { err, ok } from 'neverthrow';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 import { resultFromTruthy } from './Contract';
 
-export type Schema = {
-    should:boolean,
-    value:number
+export type RecvSchema = {
+    amount: CcdAmount,
+    avg_acc: number,
+    json_content: JSON
 }
 
 interface Props {
     canRecv: boolean;
-    receive: ({should, value}: Schema) => void;
+    receive: ({amount, avg_acc, json_content}: RecvSchema) => void;
 }
 
-export default function MyStorage(props: Props) {
+export default function JsonStorage(props: Props) {
     const { canRecv, receive } = props;
-    const [inputValue, setInputValue] = useState('');
-    const [recvValue, setRecvValue] = useState<number>();
-    const [should, setShould] = useState<boolean>(false);
+    const [amount, setAmount] = useState<BigInt>(BigInt(0));
+    const [acc, setAcc] = useState<number>();
+    const [content, setContent] = useState<JSON>();
     const [validationError, setValidationError] = useState<string>();
 
     useEffect(() => {
-        const [ivalue, error]: [any, any] = resultFromTruthy(inputValue, undefined)
+        const [_amount, error]: [(bigint | undefined)?, (string | undefined)?] = resultFromTruthy(amount, undefined)
             .andThen((input: any) => {
                 const ivalue = Number(input);
                 return Number.isNaN(ivalue) ? err('invalid input') : ok(ivalue);
