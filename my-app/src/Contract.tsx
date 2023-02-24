@@ -104,8 +104,8 @@ interface ModalProps {
     setContract: React.Dispatch<Info | undefined>;
 }
 
-export function ContractManager(props: ModalProps) {
-    const { rpc, contract, setContract } = props;
+export function ContractManager(Mprops: ModalProps) {
+    const { rpc, contract, setContract } = Mprops;
 
     const [show, setShow] = useState(false);
     const [currentContract, setCurrentContract] = useState<Info>();
@@ -139,7 +139,7 @@ export function ContractManager(props: ModalProps) {
                     <Modal.Title>Select contract</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <ContractSelector children rpc={rpc} setContract={setCurrentContract}>
+                    <ContractSelector rpc={rpc} setContract={setCurrentContract}>
                         {currentContract && (
                             <>
                                 <Alert variant="secondary">
