@@ -1,11 +1,11 @@
 import { WalletConnection } from '@concordium/react-components';
 import { Result, ResultAsync } from 'neverthrow';
 import { useCallback } from 'react';
-import { CcdAmount, AccountTransactionType } from '@concordium/web-sdk';
+import { CcdAmount, AccountTransactionType, JsonRpcClient } from '@concordium/web-sdk';
 import { TESTNET, MAX_CONTRACT_EXECUTION_ENERGY } from './config';
 import { RecvSchema } from './inputStorage';
 import { Info, resultFromTruthy } from './Contract';
-import { submitPayView } from './state'
+import { viewPayer } from './state'
 
 export function contractUpdatePayload(amount: CcdAmount, contract: Info, method: string) {
     return {
@@ -68,7 +68,7 @@ export function usePayview(
 ) {
     const canPayview = Boolean(account) && account !== contract?.owner.address;
     const payview = useCallback(
-        (amount: CcdAmount) =>
+        (amount: CcdAmount, rpc: JsonRpcClient) =>
             Result.combine([
                 resultFromTruthy(connection, 'no connection initialized'),
                 resultFromTruthy(account, 'no account connected'),
@@ -76,7 +76,7 @@ export function usePayview(
             ])
                 .asyncAndThen(([client, account, contract]: [any,any,any]) =>
                     ResultAsync.fromPromise(
-                        submitPayView(client, amount,  account, contract),
+                        viewPayer(client, rpc, contract, amount, account),
                         (e: any) => (e as Error).message
                     )
                 )

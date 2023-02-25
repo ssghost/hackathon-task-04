@@ -3,7 +3,7 @@ import { AccountAddress, CcdAmount, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { err, ok} from 'neverthrow';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
-import { refreshState, StorageState } from './state';
+import { FullState, FreeState,  viewOwner, viewFree } from './state';
 
 export interface Info {
     version: number;
@@ -104,15 +104,15 @@ interface ModalProps {
     setContract: React.Dispatch<Info | undefined>;
 }
 
-export function ContractManager(Mprops: ModalProps) {
+export function ContractFullViewer(Mprops: ModalProps) {
     const { rpc, contract, setContract } = Mprops;
 
     const [show, setShow] = useState(false);
     const [currentContract, setCurrentContract] = useState<Info>();
-    const [currentState, setCurrentState] = useState<Result<StorageState, string>>();
+    const [currentState, setCurrentState] = useState<Result<FullState, string>>();
     useEffect(() => {
         resultFromTruthy(currentContract, 'no contract selected')
-            .asyncAndThen((c: any) => ResultAsync.fromPromise(refreshState(rpc, c), (e) => (e as Error).message))
+            .asyncAndThen((c: any) => ResultAsync.fromPromise(viewOwner(rpc, c), (e) => (e as Error).message))
             .then(setCurrentState);
     }, [rpc, currentContract]);
 
@@ -172,9 +172,107 @@ export function ContractManager(Mprops: ModalProps) {
                                 </Alert>
                                 {!currentState && <Spinner animation="border" />}
                                 {currentState?.match(
-                                    ({ value }) => (
+                                    ({ stateinfo, json_content }) => (
                                         <Alert variant="success">
-                                            Currently stored value in this contract is {value}.
+                                            Currently stored weights info:
+                                            <textarea>{stateinfo!.toString()}</textarea>
+                                            Currently stored weights content:
+                                            <textarea>{json_content!.toString()}</textarea>
+                                        </Alert>
+                                    ),
+                                    (e: any) => (
+                                        <Alert variant="danger">{e}</Alert>
+                                    )
+                                )}
+                            </>
+                        )}
+                    </ContractSelector>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleClose}>
+                        Close
+                    </Button>
+                    <Button variant="primary" onClick={handleSelect} disabled={!canSelect}>
+                        Select
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </>
+    );
+}
+
+export function ContractFreeViewer(Mprops: ModalProps) {
+    const { rpc, contract, setContract } = Mprops;
+
+    const [show, setShow] = useState(false);
+    const [currentContract, setCurrentContract] = useState<Info>();
+    const [currentState, setCurrentState] = useState<Result<FreeState, string>>();
+    useEffect(() => {
+        resultFromTruthy(currentContract, 'no contract selected')
+            .asyncAndThen((c: any) => ResultAsync.fromPromise(viewFree(rpc, c), (e) => (e as Error).message))
+            .then(setCurrentState);
+    }, [rpc, currentContract]);
+
+    const handleClose = () => setShow(false);
+    const handleShow = () => setShow(true);
+    const handleSelect = () => {
+        setContract(currentContract);
+        handleClose();
+    };
+    const canSelect = Boolean(currentState?.isOk());
+
+    return (
+        <>
+            <Button variant="outline-dark" size="sm" onClick={handleShow}>
+                {!contract && 'Select contract'}
+                {contract && (
+                    <span>
+                        Using&nbsp;contract&nbsp;<code>{contract.index.toString()}</code>
+                    </span>
+                )}
+            </Button>
+            <Modal show={show} onHide={handleClose} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>Select contract</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <ContractSelector rpc={rpc} setContract={setCurrentContract}>
+                        {currentContract && (
+                            <>
+                                <Alert variant="secondary">
+                                    <Row>
+                                        <Col sm={2}>Name:</Col>
+                                        <Col sm={10}>
+                                            <code>{currentContract.name}</code>
+                                        </Col>
+                                    </Row>
+                                    <Row>
+                                        <Col sm={2}>Index:</Col>
+                                        <Col sm={10}>
+                                            <code>{currentContract.index.toString()}</code>
+                                        </Col>
+                                    </Row>
+                                    <Row>
+                                        <Col sm={2}>Owner:</Col>
+                                        <Col sm={10}>
+                                            <code>{currentContract.owner.address}</code>
+                                        </Col>
+                                    </Row>
+                                    <Row>
+                                        <Col sm={2}>Methods:</Col>
+                                        <Col sm={10}>{currentContract.methods.join(', ')}</Col>
+                                    </Row>
+                                    <Row>
+                                        <Col sm={2}>Platform:</Col>
+                                        <Col sm={10}>v{currentContract.version}</Col>
+                                    </Row>
+                                </Alert>
+                                {!currentState && <Spinner animation="border" />}
+                                {currentState?.match(
+                                    ({ stateinfo }) => (
+                                        <Alert variant="success">
+                                            Currently stored weights info:
+                                            <textarea>{stateinfo!.toString()}</textarea>
                                         </Alert>
                                     ),
                                     (e: any) => (
