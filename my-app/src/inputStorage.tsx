@@ -1,4 +1,4 @@
-import { CcdAmount } from '@concordium/web-sdk';
+import { CcdAmount, JsonRpcClient } from '@concordium/web-sdk';
 import { err, ok } from 'neverthrow';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
@@ -18,8 +18,10 @@ interface Props {
 }
 
 interface PayProps {
+    amount: any; 
+    rpc: JsonRpcClient;
     canPayview: boolean;
-    payview: (amount: CcdAmount) => void;
+    payview: (amount: CcdAmount, rpc:JsonRpcClient) => void;
 }
 
 export function JsonStorage(props: Props) {
@@ -114,15 +116,15 @@ export function JsonStorage(props: Props) {
     );
 }
 
-export function PayStorage(payprops: PayProps, amount: CcdAmount) {
+export function PayStorage(payprops: PayProps, amount: CcdAmount, rpc: JsonRpcClient) {
     const { canPayview, payview } = payprops;
 
     const handlePaymentStorage = useCallback(() => {
         console.log(`Attempting to update storage.`);
         if (amount!) {
-            payview(amount);
+            payview(amount, rpc);
         }
-    }, [amount, payview]);
+    }, [amount, rpc, payview]);
 
     const [validationError, setValidationError] = useState<string>();
 
