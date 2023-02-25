@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 import { resultFromTruthy } from './Contract';
 import { readFileSync } from 'fs';
+import { usePayview } from './useStorage';
 
 export type RecvSchema = {
     amount: CcdAmount,
@@ -16,7 +17,12 @@ interface Props {
     receive: ({amount, avg_acc, json_content}: RecvSchema) => void;
 }
 
-export default function JsonStorage(props: Props) {
+interface PayProps {
+    canPayview: boolean;
+    payview: (amount: CcdAmount) => void;
+}
+
+export function JsonStorage(props: Props) {
     const { canRecv, receive } = props;
     const [amount, setAmount] = useState<CcdAmount>();
     const [acc, setAcc] = useState<number>();
@@ -100,6 +106,33 @@ export default function JsonStorage(props: Props) {
                     </Form.Group>
                     <Button variant="primary" onClick={handleSubmitStorage} disabled={!canRecv}>
                         Update New Weights
+                    </Button>
+                    <Form.Control.Feedback type="invalid">{validationError}</Form.Control.Feedback>
+                </InputGroup>
+            </Form.Group>
+        </Row>
+    );
+}
+
+export function PayStorage(payprops: PayProps, amount: CcdAmount) {
+    const { canPayview, payview } = payprops;
+
+    const handlePaymentStorage = useCallback(() => {
+        console.log(`Attempting to update storage.`);
+        if (amount!) {
+            payview(amount);
+        }
+    }, [amount, payview]);
+
+    const [validationError, setValidationError] = useState<string>();
+
+    return (
+        <Row>
+            <Form.Group as={Col} md={8}>
+                <InputGroup className="mb-3" hasValidation>
+                    <InputGroup.Text id="basic-addon1">Payment Confirmation</InputGroup.Text>
+                    <Button variant="primary" onClick={handlePaymentStorage} disabled={!canPayview}>
+                        Pay to View
                     </Button>
                     <Form.Control.Feedback type="invalid">{validationError}</Form.Control.Feedback>
                 </InputGroup>
